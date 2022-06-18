@@ -258,19 +258,20 @@ def feature_importance_plot(model: sklearn.base.BaseEstimator,
     
 
 
-def train_models(X_train, 
-                X_test, 
-                y_train, 
-                y_test, 
-                parameters: Dict) -> None:
+def train_models(X_train: pd.DataFrame, 
+                 X_test: pd.DataFrame, 
+                 y_train: pd.DataFrame, 
+                 y_test: pd.DataFrame, 
+                 parameters: Dict) -> None:
     '''
-    train, store model results: images + scores, and store models
+    Train models and store model results: images + scores, and store models
     
     Args:
-        X_train: X training data
-        X_test: X testing data
-        y_train: y training data
-        y_test: y testing data
+        X_train (DataFrame): X training data
+        X_test (DataFrame) : X testing data
+        y_train (DataFrame): y training data
+        y_test (DataFrame) : y testing data
+        parameters (Dict)  : parameters in dictionary format
     
     Returns:
         None
@@ -279,6 +280,9 @@ def train_models(X_train,
     rfc = RandomForestClassifier(random_state=42)
     lrc = LogisticRegression()
 
+    # parameters for RF tuning
+    param_grid = parameters['RF_param_grid']
+
     # fit RF
     cv_rfc = GridSearchCV(estimator=rfc, param_grid=param_grid, cv=5)
     cv_rfc.fit(X_train, y_train)
@@ -286,16 +290,57 @@ def train_models(X_train,
     # fit logistic regression
     lrc.fit(X_train, y_train)
 
-    
-    
     # save best model
-    joblib.dump(cv_rfc.best_estimator_, './models/rfc_model.pkl')
-    joblib.dump(lrc, './models/logistic_model.pkl')
+    joblib.dump(cv_rfc.best_estimator_, parameters['save_model_dir'] + 'rfc_model.pkl')
+    joblib.dump(lrc, parameters['save_model_dir'] + 'logistic_model.pkl')
+
+    # create and save plots
+    roc_curves([cv_rfc.best_estimator_, lrc], X_test, y_test, parameters['save_results_dir'] + 'roc_curves.png')
+    feature_importance_plot(cv_rfc.best_estimator_, X_train, parameters['save_results_dir'] + 'feature_importance.png')
+
+    # save score reports
+    classification_report_image(cv_rfc.best_estimator_, X_train, X_test, 
+    y_train, y_test, 'Random Forest', parameters['save_results_dir'] + 'rf_classification_report.png')
+    classification_report_image(lrc, X_train, X_test, y_train, y_test, 
+    'Logistic Regression', parameters['save_results_dir'] + 'lr_classification_report.png')
 
 
 def load_model(model_path: str):
     '''
-    
+    Load model from model_path
+
+    Args:
+        model_path (string) : path where model was saved
+
+    Returns:
+        model object
     '''
     model = joblib.load(model_path) 
     return model
+
+
+if __name__ == '__main__':
+    
+    # load parameters
+    parameters = load_params('config.yaml')
+
+    # read dataset
+    columns_to_read = parameters['cat_columns'] + parameters['quant_columns'] + ['Attrition_Flag']
+    df = import_data("./data/bank_data.csv", keep_cols = columns_to_read)
+
+    # generate EDA report
+    perform_eda(df, './images/eda/sample_data_overview.html')
+
+    # define target column
+    target_col = parameters['target_col']
+    df[target_col] = df['Attrition_Flag'].apply(lambda val: 0 if val == "Existing Customer" else 1)
+    df = df.drop(columns=['Attrition_Flag'])
+
+    # generate Churn vs Stayed data overview
+    compare_churn_vs_stayed(df, 'Churn', './images/eda/Churn vs stayed.html')
+
+    # prepare train/test data
+    X_train, X_test, y_train, y_test = perform_feature_engineering(df, parameters)
+
+    # train models and save outcomes
+    train_models(X_train, X_test, y_train, y_test, parameters)
