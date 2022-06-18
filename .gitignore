@@ -1,0 +1,7 @@
+__pycache__
+logs/*
+churn_notebook.ipynb
+Guide.ipynb
+*.DS_Store
+
+!logs/.gitkeep 
