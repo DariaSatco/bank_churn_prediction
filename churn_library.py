@@ -7,6 +7,7 @@ import numpy as np
 from typing import List, Dict, Tuple
 import yaml
 import joblib
+import logging
 
 import sklearn
 from sklearn.linear_model import LogisticRegression
@@ -14,7 +15,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import plot_roc_curve, classification_report
-
 
 import matplotlib.pyplot as plt
 import sweetviz as sv
@@ -319,28 +319,42 @@ def load_model(model_path: str):
     return model
 
 
+logging.basicConfig(
+    filename='./logs/churn_library_main.log',
+    level = logging.INFO,
+    filemode='w',
+    format='%(name)s - %(levelname)s - %(message)s')
+
+
 if __name__ == '__main__':
     
     # load parameters
     parameters = load_params('config.yaml')
+    logging.info('Loaded parameters from config.yaml')
 
     # read dataset
     columns_to_read = parameters['cat_columns'] + parameters['quant_columns'] + ['Attrition_Flag']
-    df = import_data("./data/bank_data.csv", keep_cols = columns_to_read)
+    df = import_data(parameters['dataset_path'], keep_cols = columns_to_read)
+    logging.info(f'Read dataset from {parameters["dataset_path"]}')
 
     # generate EDA report
-    perform_eda(df, './images/eda/sample_data_overview.html')
+    perform_eda(df, parameters['save_eda_dir'] + 'sample_data_overview.html')
+    logging.info('Saved EDA to ' + parameters['save_eda_dir'] + 'sample_data_overview.html')
 
     # define target column
     target_col = parameters['target_col']
     df[target_col] = df['Attrition_Flag'].apply(lambda val: 0 if val == "Existing Customer" else 1)
     df = df.drop(columns=['Attrition_Flag'])
+    logging.info('Generated target column with name' + parameters['target_col'])
 
     # generate Churn vs Stayed data overview
-    compare_churn_vs_stayed(df, 'Churn', './images/eda/Churn vs stayed.html')
+    compare_churn_vs_stayed(df, target_col, parameters['save_eda_dir'] + 'Churn vs stayed.html')
+    logging.info('Saved Churn vs stayed data comparison to ' + parameters['save_eda_dir'] + 'Churn vs stayed.html')
 
     # prepare train/test data
     X_train, X_test, y_train, y_test = perform_feature_engineering(df, parameters)
+    logging.info('Prepared train/test dataset with features and target')
 
     # train models and save outcomes
     train_models(X_train, X_test, y_train, y_test, parameters)
+    logging.info('Trained models and saved resuts')
