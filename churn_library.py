@@ -20,6 +20,13 @@ import matplotlib.pyplot as plt
 import sweetviz as sv
 
 
+logging.basicConfig(
+    filename='./logs/churn_library_main.log',
+    level = logging.INFO,
+    filemode='w',
+    format='%(name)s - %(levelname)s - %(message)s')
+
+
 def load_params(config_file_pth: str) -> Dict:
     '''
     Read parameters from yaml config file
@@ -30,9 +37,14 @@ def load_params(config_file_pth: str) -> Dict:
     Returns:
         parameters (dictionary): dictionary witn parameters
     '''
-    with open(config_file_pth) as config_file:
-        parameters = yaml.safe_load(config_file)
-    return parameters
+    try:
+        with open(config_file_pth) as config_file:
+            parameters = yaml.safe_load(config_file)
+        logging.info(f'Loaded parameters from {config_file_pth}')
+        return parameters
+    except FileNotFoundError as err:
+        logging.error("ERROR: YAML file read failed. The file {config_file_pth} wasn't found")
+        raise err
 
 
 def import_data(pth: str, 
@@ -47,10 +59,17 @@ def import_data(pth: str,
     Returns:
         df (DataFrame): pandas dataframe from file
     '''	
+    try:
+        df = pd.read_csv(pth, usecols = keep_cols)
+        logging.info(f"Dataframe loaded from {pth}: {df.shape[0]} rows, {df.shape[1]} columns.")
+        return df
+    except FileNotFoundError as err:
+        logging.error("ERROR: CSV file read failed. The file {pth} wasn't found")
+        raise err
+    except ValueError as err:
+        logging.error('ERROR: List of columns to keep from csv file do not match file content.')
+        raise err
     
-    df = pd.read_csv(pth, usecols=keep_cols)
-    return df
-
 
 def perform_eda(df: pd.DataFrame, 
                 save_to: str) -> None:
@@ -67,6 +86,7 @@ def perform_eda(df: pd.DataFrame,
     '''
     analysis = sv.analyze([df, 'input_data'])
     analysis.show_html(save_to)
+    logging.info(f'Saved EDA to {save_to}')
 
 
 def compare_churn_vs_stayed(df: pd.DataFrame,
@@ -88,6 +108,7 @@ def compare_churn_vs_stayed(df: pd.DataFrame,
     '''
     report = sv.compare_intra(df, df[churn_col]==1, ["Churn", "Stayed"])
     report.show_html(save_to)
+    logging.info(f'Saved Churn vs stayed data comparison to {save_to}')
 
 
 def encoder_helper(df: pd.DataFrame, 
@@ -112,6 +133,7 @@ def encoder_helper(df: pd.DataFrame,
     '''
     for col in category_lst:
         df[col + response] = df.groupby(col)[target_col].transform('mean')
+        logging.info(f'{col + response} was added to the dataframe by encoding original column {col}')
     return df
     
 
@@ -145,6 +167,7 @@ def perform_feature_engineering(df: pd.DataFrame,
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
                                                         test_size = parameters['test_ratio'], 
                                                         random_state = 42)
+    logging.info(f'Prepared train/test dataset split with {1-parameters["test_ratio"]}/{parameters["test_ratio"]} ratio')                                                     
     return X_train, X_test, y_train, y_test
 
 
@@ -190,6 +213,7 @@ def classification_report_image(model: sklearn.base.BaseEstimator,
 
     # save image
     fig.savefig(output_pth, dpi=fig.dpi, format='png', bbox_inches='tight')
+    logging.info(f'Calssification report plot for {model_name} saved to {output_pth}')
 
 
 
@@ -215,6 +239,7 @@ def roc_curves(model_list: List,
     for model in model_list:
         plot_roc_curve(model, X_test, y_test, ax=ax, alpha=0.8)
     fig.savefig(output_pth, dpi=fig.dpi, format='png', bbox_inches='tight')
+    logging.info(f'ROC curve plot saved to {output_pth}')
     
 
 
@@ -255,6 +280,7 @@ def feature_importance_plot(model: sklearn.base.BaseEstimator,
 
     # save plot to output_pth
     fig.savefig(output_pth, dpi=fig.dpi, format='png', bbox_inches='tight')
+    logging.info(f'Feature importance plot saved to {output_pth}')
     
 
 
@@ -292,7 +318,10 @@ def train_models(X_train: pd.DataFrame,
 
     # save best model
     joblib.dump(cv_rfc.best_estimator_, parameters['save_model_dir'] + 'rfc_model.pkl')
+    logging.info('Saced RF best classifier to ' + parameters['save_model_dir'] + 'rfc_model.pkl')
+
     joblib.dump(lrc, parameters['save_model_dir'] + 'logistic_model.pkl')
+    logging.info('Saved Logistic regression model to ' + parameters['save_model_dir'] + 'logistic_model.pkl')
 
     # create and save plots
     roc_curves([cv_rfc.best_estimator_, lrc], X_test, y_test, parameters['save_results_dir'] + 'roc_curves.png')
@@ -319,27 +348,17 @@ def load_model(model_path: str):
     return model
 
 
-logging.basicConfig(
-    filename='./logs/churn_library_main.log',
-    level = logging.INFO,
-    filemode='w',
-    format='%(name)s - %(levelname)s - %(message)s')
-
-
 if __name__ == '__main__':
     
     # load parameters
     parameters = load_params('config.yaml')
-    logging.info('Loaded parameters from config.yaml')
 
     # read dataset
     columns_to_read = parameters['cat_columns'] + parameters['quant_columns'] + ['Attrition_Flag']
     df = import_data(parameters['dataset_path'], keep_cols = columns_to_read)
-    logging.info(f'Read dataset from {parameters["dataset_path"]}')
 
     # generate EDA report
     perform_eda(df, parameters['save_eda_dir'] + 'sample_data_overview.html')
-    logging.info('Saved EDA to ' + parameters['save_eda_dir'] + 'sample_data_overview.html')
 
     # define target column
     target_col = parameters['target_col']
@@ -349,12 +368,10 @@ if __name__ == '__main__':
 
     # generate Churn vs Stayed data overview
     compare_churn_vs_stayed(df, target_col, parameters['save_eda_dir'] + 'Churn vs stayed.html')
-    logging.info('Saved Churn vs stayed data comparison to ' + parameters['save_eda_dir'] + 'Churn vs stayed.html')
 
     # prepare train/test data
     X_train, X_test, y_train, y_test = perform_feature_engineering(df, parameters)
-    logging.info('Prepared train/test dataset with features and target')
 
     # train models and save outcomes
     train_models(X_train, X_test, y_train, y_test, parameters)
-    logging.info('Trained models and saved resuts')
+    logging.info('SUCCESS: Trained models and saved results')
