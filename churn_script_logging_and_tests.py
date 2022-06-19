@@ -1,5 +1,7 @@
 import os
 import logging
+
+from sklearn.datasets import make_moons
 from churn_library import *
 
 logging.basicConfig(
@@ -55,6 +57,9 @@ def test_eda_file_created():
 	# create test dataframe
 	test_df = create_test_df()
 
+	# create tmp folder if not exists
+	os.makedirs('./tmp', exist_ok=True)
+
 	# remove old report if already exists
 	if os.path.isfile('./tmp/test_eda.html'):
 		os.remove('./tmp/test_eda.html')
@@ -71,12 +76,13 @@ def test_eda_file_created():
 		raise err
 	
 
-
 def test_encoder_helper_columns_created():
 	'''
 	Test that encoder_helper is creating new columns with correct names
 	'''
+	# create test dataframe
 	test_df = create_test_df()
+	# encode category columns
 	test_df = encoder_helper(test_df, 
 							category_lst = ['B', 'Attrition_Flag'],
 							target_col = 'test_target', 
@@ -95,7 +101,9 @@ def test_encoder_helper_encoded_vals():
 	'''
 	Test that encoded values are correctly calculated
 	'''
+	# create test dataframe
 	test_df = create_test_df()
+	# encode category columns
 	test_df = encoder_helper(test_df, 
 							category_lst = ['B', 'Attrition_Flag'],
 							target_col = 'test_target', 
@@ -112,17 +120,41 @@ def test_encoder_helper_encoded_vals():
 		raise err
 
 
-def test_perform_feature_engineering(perform_feature_engineering):
+def test_perform_feature_split_ratio():
 	'''
-	test perform_feature_engineering
+	Test that perform_feature_engineering is generating correct splits
 	'''
+	test_df = create_test_df()
+	params = {'target_col': 'test_target',
+			 'split_ratio': 0.5}
+	X_train, X_test, y_train, y_test = perform_feature_engineering(test_df, params)
+	try:
+		assert len(y_test)/len(test_df) == 0.5
+		logging.info('SUCCESS: perform_feature_engineering output split validated')
+	except AssertionError as err:
+		logging.error(f'ERROR: split ratio is incorrect! Expected {params["split_ratio"]}, but got {len(y_test)/len(test_df)}')
+		raise err
 
 
-def test_train_models(train_models):
+def test_train_models_outputs_generated(train_models):
 	'''
-	test train_models
+	Test that train_models is generating all necessary files
 	'''
+	# generate dataset
+	X, y = make_moons(n_samples=100, noise=0.1)
+	X_df = pd.DataFrame(X, columns=['X', 'Y'])
+	y_df = pd.DataFrame(y, columns=['target'])
+	test_df = pd.concat([X_df, y_df], axis=1)
 
+	# prepare train/test
+	params = {'target_col': 'target',
+			  'split_ratio': 0.2}
+	X_train, X_test, y_train, y_test = perform_feature_engineering(test_df, params)
+
+	# call train_models
+	train_models(X_train, X_test, y_train, y_test, parameters)
+
+	# ASSERT: TBD
 
 if __name__ == "__main__":
 	pass
