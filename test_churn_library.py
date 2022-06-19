@@ -33,9 +33,9 @@ def test_import_data_completness():
     '''
     Test if size of imported data is correct
     '''
-    df = import_data("./data/bank_data.csv")
+    test_df = import_data("./data/bank_data.csv")
     try:
-        assert df.shape == (10127, 22)
+        assert test_df.shape == (10127, 22)
         logging.info('SUCCESS: size of data read with import_data is correct')
     except AssertionError as err:
         logging.error(
@@ -48,9 +48,9 @@ def test_import_data_columns_filter():
     Test case of pre-filtered columns
     '''
     keep_cols = ['CLIENTNUM']
-    df = import_data("./data/bank_data.csv", keep_cols)
+    test_df = import_data("./data/bank_data.csv", keep_cols)
     try:
-        assert list(df.columns) == keep_cols
+        assert list(test_df.columns) == keep_cols
         logging.info(
             'SUCCESS: keep_cols were correctly kept while reading data with import_data')
     except AssertionError as err:
@@ -151,7 +151,8 @@ def test_perform_feature_split_ratio():
             'SUCCESS: perform_feature_engineering output split validated')
     except AssertionError as err:
         logging.error(
-            f'ERROR: split ratio is incorrect! Expected {params["split_ratio"]}, but got {len(y_test)/len(test_df)}')
+            f'ERROR: split ratio is incorrect! Expected {params["split_ratio"]}, \
+				but got {len(y_test)/len(test_df)}')
         raise err
 
 
@@ -160,9 +161,9 @@ def test_train_models_outputs_generated():
     Test that train_models is generating all necessary files
     '''
     # clean tmp folder
-    files = [f for f in glob.glob('./tmp/*') if not os.path.isdir(f)]
-    for f in files:
-        os.remove(f)
+    files_list = [f for f in glob.glob('./tmp/*') if not os.path.isdir(f)]
+    for file in files_list:
+        os.remove(file)
     assert len([f for f in glob.glob('./tmp/*') if not os.path.isdir(f)]) == 0
 
     # generate dataset
@@ -230,7 +231,7 @@ def test_train_models_outputs_generated():
         counter += 1
 
     try:
-        counter == 0
+        assert counter == 0
         logging.info(
             'SUCCESS: all necessary files were succesfully generated!')
     except AssertionError as err:

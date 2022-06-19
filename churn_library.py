@@ -2,12 +2,13 @@
 This is a module with necessary methods for customer churn prediction model
 """
 
-import pandas as pd
-import numpy as np
 from typing import List, Dict, Tuple
+import logging
 import yaml
 import joblib
-import logging
+
+import pandas as pd
+import numpy as np
 
 import sklearn
 from sklearn.linear_model import LogisticRegression
@@ -32,9 +33,9 @@ def load_params(config_file_pth: str) -> Dict:
     '''
     try:
         with open(config_file_pth) as config_file:
-            parameters = yaml.safe_load(config_file)
+            params = yaml.safe_load(config_file)
         logging.info(f'Loaded parameters from {config_file_pth}')
-        return parameters
+        return params
     except FileNotFoundError as err:
         logging.error(
             "ERROR: YAML file read failed. The file {config_file_pth} wasn't found")
@@ -68,25 +69,25 @@ def import_data(pth: str,
         raise err
 
 
-def perform_eda(df: pd.DataFrame,
+def perform_eda(input_df: pd.DataFrame,
                 save_to: str) -> None:
     '''
     Perform eda using sweetviz functionality to generate HTML
     with an overview of data
 
     Args:
-        df (DataFrame)   : dataframe to analyze
-        save_to (string) : path to save output file
+        input_df (DataFrame): dataframe to analyze
+        save_to (string)    : path to save output file
 
     Returns:
         None
     '''
-    analysis = sv.analyze([df, 'input_data'])
+    analysis = sv.analyze([input_df, 'input_data'])
     analysis.show_html(save_to)
     logging.info(f'Saved EDA to {save_to}')
 
 
-def compare_churn_vs_stayed(df: pd.DataFrame,
+def compare_churn_vs_stayed(input_df: pd.DataFrame,
                             churn_col: str,
                             save_to: str) -> None:
     '''
@@ -95,15 +96,15 @@ def compare_churn_vs_stayed(df: pd.DataFrame,
     HTML report
 
     Args:
-        df (DataFrame)   : dataframe to analyze
-        churn_col (str)  : name of column with 1/0 values corresponding to
+        input_df (DataFrame) : dataframe to analyze
+        churn_col (str)      : name of column with 1/0 values corresponding to
                            Churned / Not churned
-        save_to (string) : path to save output file
+        save_to (string)     : path to save output file
 
     Returns:
         None
     '''
-    report = sv.compare_intra(df, df[churn_col] == 1, ["Churn", "Stayed"])
+    report = sv.compare_intra(input_df, input_df[churn_col] == 1, ["Churn", "Stayed"])
     report.show_html(save_to)
     logging.info(f'Saved Churn vs stayed data comparison to {save_to}')
 
@@ -200,7 +201,8 @@ def perform_feature_engineering(df: pd.DataFrame,
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=parameters['test_ratio'], random_state=42)
     logging.info(
-        f'Prepared train/test dataset split with {1-parameters["test_ratio"]}/{parameters["test_ratio"]} ratio')
+        f'Prepared train/test dataset split with \
+            {1-parameters["test_ratio"]}/{parameters["test_ratio"]} ratio')
     return X_train, X_test, y_train, y_test
 
 
@@ -425,35 +427,35 @@ if __name__ == '__main__':
         format='%(name)s - %(levelname)s - %(message)s')
 
     # load parameters
-    parameters = load_params('config.yaml')
+    churn_parameters = load_params('config.yaml')
 
     # read dataset
-    columns_to_read = parameters['cat_columns'] + \
-        parameters['quant_columns'] + ['Attrition_Flag']
+    columns_to_read = churn_parameters['cat_columns'] + \
+        churn_parameters['quant_columns'] + ['Attrition_Flag']
     input_data = import_data(
-        parameters['dataset_path'],
+        churn_parameters['dataset_path'],
         keep_cols=columns_to_read)
 
     # generate EDA report
     perform_eda(
         input_data,
-        parameters['save_eda_dir'] +
+        churn_parameters['save_eda_dir'] +
         'sample_data_overview.html')
 
     # create target column
-    preprocessed_data = build_target(input_data, parameters)
+    preprocessed_data = build_target(input_data, churn_parameters)
 
     # generate Churn vs Stayed data overview
     compare_churn_vs_stayed(
         preprocessed_data,
-        parameters['target_col'],
-        parameters['save_eda_dir'] +
+        churn_parameters['target_col'],
+        churn_parameters['save_eda_dir'] +
         'Churn vs stayed.html')
 
     # prepare train/test data
-    X_train, X_test, y_train, y_test = perform_feature_engineering(
-        preprocessed_data, parameters)
+    feat_train, feat_test, tg_train, tg_test = perform_feature_engineering(
+        preprocessed_data, churn_parameters)
 
     # train models and save outcomes
-    train_models(X_train, X_test, y_train, y_test, parameters)
+    train_models(feat_train, feat_test, tg_train, tg_test, churn_parameters)
     logging.info('SUCCESS: Trained models and saved results')
