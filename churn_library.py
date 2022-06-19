@@ -75,7 +75,7 @@ def perform_eda(df: pd.DataFrame,
                 save_to: str) -> None:
     '''
     Perform eda using sweetviz functionality to generate HTML
-    with an overvie of data
+    with an overview of data
     
     Args:
         df (DataFrame)   : dataframe to analyze
@@ -111,6 +111,30 @@ def compare_churn_vs_stayed(df: pd.DataFrame,
     logging.info(f'Saved Churn vs stayed data comparison to {save_to}')
 
 
+def build_target(df: pd.DataFrame,
+                 parameters: Dict) -> pd.DataFrame:
+    '''
+    Createst target column as new column in input dataframe. Drops existing column
+    Attrition_Flag used for target creation
+
+    Args:
+        df (DataFrame)   : input dataframe
+        parameters (Dict): parameters dictionary
+
+    Returns:
+        DataFrame with target column added
+    '''
+    target_col = parameters['target_col']
+    try:
+        df[target_col] = df['Attrition_Flag'].apply(lambda val: 0 if val == "Existing Customer" else 1)
+        df = df.drop(columns=['Attrition_Flag'])
+        logging.info('Generated target column with name' + parameters['target_col'])
+        return df
+    except KeyError as err:
+        logging.error('ERROR: While build_target run Attrition_Flag column was not found in dataframe!')
+        raise err
+   
+    
 def encoder_helper(df: pd.DataFrame, 
                    category_lst: List[str],
                    target_col: str, 
@@ -161,7 +185,7 @@ def perform_feature_engineering(df: pd.DataFrame,
 
     df = encoder_helper(df, parameters['cat_columns'], parameters['target_col'],
                         response=response)
-    x_cols = parameters['quant_columns'] + [col + '' for col in parameters['cat_columns']]
+    x_cols = parameters['quant_columns'] + [col + response for col in parameters['cat_columns']]
     X = df[x_cols].copy()
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
@@ -355,22 +379,19 @@ if __name__ == '__main__':
 
     # read dataset
     columns_to_read = parameters['cat_columns'] + parameters['quant_columns'] + ['Attrition_Flag']
-    df = import_data(parameters['dataset_path'], keep_cols = columns_to_read)
+    input_data = import_data(parameters['dataset_path'], keep_cols = columns_to_read)
 
     # generate EDA report
-    perform_eda(df, parameters['save_eda_dir'] + 'sample_data_overview.html')
+    perform_eda(input_data, parameters['save_eda_dir'] + 'sample_data_overview.html')
 
-    # define target column
-    target_col = parameters['target_col']
-    df[target_col] = df['Attrition_Flag'].apply(lambda val: 0 if val == "Existing Customer" else 1)
-    df = df.drop(columns=['Attrition_Flag'])
-    logging.info('Generated target column with name' + parameters['target_col'])
+    # create target column
+    preprocessed_data = build_target(input_data, parameters)
 
     # generate Churn vs Stayed data overview
-    compare_churn_vs_stayed(df, target_col, parameters['save_eda_dir'] + 'Churn vs stayed.html')
+    compare_churn_vs_stayed(preprocessed_data, parameters['target_col'], parameters['save_eda_dir'] + 'Churn vs stayed.html')
 
     # prepare train/test data
-    X_train, X_test, y_train, y_test = perform_feature_engineering(df, parameters)
+    X_train, X_test, y_train, y_test = perform_feature_engineering(preprocessed_data, parameters)
 
     # train models and save outcomes
     train_models(X_train, X_test, y_train, y_test, parameters)
