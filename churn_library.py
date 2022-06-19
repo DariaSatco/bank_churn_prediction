@@ -20,13 +20,6 @@ import matplotlib.pyplot as plt
 import sweetviz as sv
 
 
-logging.basicConfig(
-    filename='./logs/churn_library_main.log',
-    level = logging.INFO,
-    filemode='w',
-    format='%(name)s - %(levelname)s - %(message)s')
-
-
 def load_params(config_file_pth: str) -> Dict:
     '''
     Read parameters from yaml config file
@@ -183,11 +176,14 @@ def perform_feature_engineering(df: pd.DataFrame,
     '''
     y = df[parameters['target_col']].copy()
 
+    # encode category columns
     df = encoder_helper(df, parameters['cat_columns'], parameters['target_col'],
                         response=response)
+    # keep only feature columns
     x_cols = parameters['quant_columns'] + [col + response for col in parameters['cat_columns']]
     X = df[x_cols].copy()
 
+    # split train/test for X, y
     X_train, X_test, y_train, y_test = train_test_split(X, y, 
                                                         test_size = parameters['test_ratio'], 
                                                         random_state = 42)
@@ -237,7 +233,7 @@ def classification_report_image(model: sklearn.base.BaseEstimator,
 
     # save image
     fig.savefig(output_pth, dpi=fig.dpi, format='png', bbox_inches='tight')
-    logging.info(f'Calssification report plot for {model_name} saved to {output_pth}')
+    logging.info(f'Classification report plot for {model_name} saved to {output_pth}')
 
 
 
@@ -373,6 +369,12 @@ def load_model(model_path: str):
 
 
 if __name__ == '__main__':
+
+    logging.basicConfig(
+        filename='./logs/churn_library_main.log',
+        level = logging.INFO,
+        filemode='w',
+        format='%(name)s - %(levelname)s - %(message)s')
     
     # load parameters
     parameters = load_params('config.yaml')

@@ -3,5 +3,8 @@ logs/*
 churn_notebook.ipynb
 Guide.ipynb
 *.DS_Store
+tmp
+.vscode
+.pytest_cache
 
 !logs/.gitkeep 

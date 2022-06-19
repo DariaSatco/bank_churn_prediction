@@ -1,14 +1,16 @@
 import os
+import glob
 import logging
 
-from sklearn.datasets import make_moons
-from churn_library import *
+import pandas as pd
+import numpy as np
 
-logging.basicConfig(
-    filename='./logs/churn_library_tests.log',
-    level = logging.INFO,
-    filemode='w',
-    format='%(name)s - %(levelname)s - %(message)s')
+from sklearn.datasets import make_moons
+from churn_library import (import_data,
+						   perform_eda,
+						   encoder_helper,
+						   perform_feature_engineering,
+						   train_models)
 
 
 def create_test_df():
@@ -57,19 +59,20 @@ def test_eda_file_created():
 	# create test dataframe
 	test_df = create_test_df()
 
-	# create tmp folder if not exists
+	# create tmp and report folders if not exists
 	os.makedirs('./tmp', exist_ok=True)
+	os.makedirs('./tmp/report', exist_ok=True)
 
 	# remove old report if already exists
-	if os.path.isfile('./tmp/test_eda.html'):
-		os.remove('./tmp/test_eda.html')
+	if os.path.isfile('./tmp/report/test_eda.html'):
+		os.remove('./tmp/report/test_eda.html')
 	
 	# run EDA
-	perform_eda(test_df, './tmp/test_eda.html')
+	perform_eda(test_df, './tmp/report/test_eda.html')
 
 	# check if file was successfully created
 	try:
-		assert os.path.exists('./tmp/test_eda.html')
+		assert os.path.exists('./tmp/report/test_eda.html')
 		logging.info('SUCCESS: EDA test report was sucessfully created by running perform_eda.')
 	except AssertionError as err:
 		logging.error('ERROR: EDA report file creation failed!')
@@ -126,7 +129,10 @@ def test_perform_feature_split_ratio():
 	'''
 	test_df = create_test_df()
 	params = {'target_col': 'test_target',
-			 'split_ratio': 0.5}
+			  'test_ratio': 0.5,
+			  'cat_columns': ['B'],
+			  'quant_columns': ['A']}
+
 	X_train, X_test, y_train, y_test = perform_feature_engineering(test_df, params)
 	try:
 		assert len(y_test)/len(test_df) == 0.5
@@ -136,10 +142,16 @@ def test_perform_feature_split_ratio():
 		raise err
 
 
-def test_train_models_outputs_generated(train_models):
+def test_train_models_outputs_generated():
 	'''
 	Test that train_models is generating all necessary files
 	'''
+	# clean tmp folder
+	files = [f for f in glob.glob('./tmp/*') if not os.path.isdir(f)]
+	for f in files:
+		os.remove(f)
+	assert len([f for f in glob.glob('./tmp/*') if not os.path.isdir(f)]) == 0
+
 	# generate dataset
 	X, y = make_moons(n_samples=100, noise=0.1)
 	X_df = pd.DataFrame(X, columns=['X', 'Y'])
@@ -148,21 +160,78 @@ def test_train_models_outputs_generated(train_models):
 
 	# prepare train/test
 	params = {'target_col': 'target',
-			  'split_ratio': 0.2}
+			  'test_ratio': 0.2, 
+			  'cat_columns': [],
+			  'quant_columns': ['X', 'Y'],
+			  'save_model_dir': './tmp/',
+			  'save_results_dir': './tmp/',
+			  'save_eda_dir': './tmp/',
+			  'RF_param_grid': {'n_estimators': [10, 20],
+			  					'max_depth': [4, 5]}
+	}
 	X_train, X_test, y_train, y_test = perform_feature_engineering(test_df, params)
 
 	# call train_models
-	train_models(X_train, X_test, y_train, y_test, parameters)
+	train_models(X_train, X_test, y_train, y_test, params)
 
-	# ASSERT: TBD
+	# check that all files were successfully created
+	counter = 0
+	try:
+		assert os.path.isfile('./tmp/rfc_model.pkl')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/rfc_model.pkl was not created')
+		counter += 1
+	
+	try:
+		assert os.path.isfile('./tmp/logistic_model.pkl')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/logistic_model.pkl was not created')
+		counter += 1
 
+	try:
+		assert os.path.isfile('./tmp/roc_curves.png')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/roc_curves.png was not created')
+		counter += 1
+
+	try:
+		assert os.path.isfile('./tmp/feature_importance.png')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/feature_importance.png was not created')
+		counter += 1
+
+	try:
+		assert os.path.isfile('./tmp/rf_classification_report.png')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/rf_classification_report.png was not created')
+		counter += 1
+
+	try:	
+		assert os.path.isfile('./tmp/lr_classification_report.png')
+	except AssertionError:
+		logging.error('ERROR: File ./tmp/lr_classification_report.png was not created')
+		counter += 1
+
+	try: 
+		counter == 0
+		logging.info('SUCCESS: all necessary files were succesfully generated!')
+	except AssertionError as err:
+		logging.error('ERROR: Some of the files were not generated')
+		raise err
+
+	
 if __name__ == "__main__":
-	pass
+	
+	logging.basicConfig(
+		filename='./logs/churn_library_tests.log',
+		level = logging.INFO,
+		filemode='w',
+		format='%(name)s - %(levelname)s - %(message)s')
 
-
-
-
-
-
-
-
+	test_import_data_completness()
+	test_import_data_columns_filter()
+	test_eda_file_created()
+	test_encoder_helper_columns_created()
+	test_encoder_helper_encoded_vals()
+	test_perform_feature_split_ratio()
+	test_train_models_outputs_generated()
