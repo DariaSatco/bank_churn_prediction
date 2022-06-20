@@ -104,7 +104,9 @@ def compare_churn_vs_stayed(input_df: pd.DataFrame,
     Returns:
         None
     '''
-    report = sv.compare_intra(input_df, input_df[churn_col] == 1, ["Churn", "Stayed"])
+    report = sv.compare_intra(
+        input_df, input_df[churn_col] == 1, [
+            "Churn", "Stayed"])
     report.show_html(save_to)
     logging.info(f'Saved Churn vs stayed data comparison to {save_to}')
 
