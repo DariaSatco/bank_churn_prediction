@@ -1,16 +1,16 @@
-dataset_path: ./data/bank_data.csv
-save_model_dir: ./models/
-save_results_dir: ./images/results/
-save_eda_dir: ./images/eda/
+dataset_path: ./data/bank_data.csv      # file with data
+save_model_dir: ./models/               # output path to save pretrained models
+save_results_dir: ./images/results/     # output path to save model training results
+save_eda_dir: ./images/eda/             # output path to save EDA report
 
-cat_columns:
+cat_columns:                            # list of categorical columns to use as features
   - Gender
   - Education_Level
   - Marital_Status
   - Income_Category
   - Card_Category
 
-quant_columns:
+quant_columns:                          # list of numerical columns to use as features
   - Customer_Age
   - Dependent_count
   - Months_on_book
@@ -26,10 +26,10 @@ quant_columns:
   - Total_Ct_Chng_Q4_Q1
   - Avg_Utilization_Ratio
 
-target_col: Churn
-test_ratio: 0.3
+target_col: Churn                     # name of column where binary (1/0) target will be kept 
+test_ratio: 0.3                       # share of test in train/test split
 
-RF_param_grid: 
+RF_param_grid:                        # parameters grid for Random Forest GridSearch
   n_estimators: [200, 500]
   max_features: ['auto', 'sqrt']
   max_depth: [4, 5, 100]

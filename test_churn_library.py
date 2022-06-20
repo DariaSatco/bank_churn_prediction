@@ -139,14 +139,14 @@ def test_perform_feature_split_ratio():
     '''
     test_df = create_test_df()
     params = {'target_col': 'test_target',
-              'test_ratio': 0.5,
+              'test_ratio': 0.25,
               'cat_columns': ['B'],
               'quant_columns': ['A']}
 
     X_train, X_test, y_train, y_test = perform_feature_engineering(
         test_df, params)
     try:
-        assert len(y_test) / len(test_df) == 0.5
+        assert len(y_test) / len(test_df) == 0.25
         logging.info(
             'SUCCESS: perform_feature_engineering output split validated')
     except AssertionError as err:

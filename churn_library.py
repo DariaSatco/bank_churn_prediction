@@ -238,7 +238,7 @@ def classification_report_image(model: sklearn.base.BaseEstimator,
     plt.text(0.01, 1.25, str(f'{model_name} Train'), {
              'fontsize': 10}, fontproperties='monospace')
     plt.text(
-        0.01, 0.05, str(
+        0.01, 0.7, str(
             classification_report(
                 y_train, y_train_preds)), {
             'fontsize': 10}, fontproperties='monospace')
@@ -247,7 +247,7 @@ def classification_report_image(model: sklearn.base.BaseEstimator,
     plt.text(0.01, 0.6, str(f'{model_name} Test'), {
              'fontsize': 10}, fontproperties='monospace')
     plt.text(
-        0.01, 0.7, str(
+        0.01, 0.05, str(
             classification_report(
                 y_test, y_test_preds)), {
             'fontsize': 10}, fontproperties='monospace')
